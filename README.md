@@ -1,4 +1,4 @@
-# minizip 2.10.0
+# minizip 2.10.1
 
 minizip is a zip manipulation library written in C that is supported on Windows, macOS, and Linux.
 
@@ -111,4 +111,4 @@ Thanks go out to all the people who have taken the time to contribute code revie
 
 Thanks to [Gilles Vollant](https://www.winimage.com/zLibDll/minizip.html) on which this work is originally based on.
 
-The [ZIP format](https://github.com/nmoinvaz/minizip/blob/master/doc/appnote.txt) was defined by Phil Katz of PKWARE.
+The [ZIP format](https://github.com/nmoinvaz/minizip/blob/master/doc/zip/appnote.txt) was defined by Phil Katz of PKWARE.
