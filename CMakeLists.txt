@@ -12,7 +12,7 @@ message(STATUS "Using CMake version ${CMAKE_VERSION}")
 option(MZ_COMPAT "Enables compatibility layer" ON)
 option(MZ_ZLIB "Enables ZLIB compression" ON)
 option(MZ_BZIP2 "Enables BZIP2 compression" ON)
-option(MZ_LZMA "Enables LZMA compression" ON)
+option(MZ_LZMA "Enables LZMA & XZ compression" ON)
 option(MZ_ZSTD "Enables ZSTD compression" ON)
 option(MZ_PKCRYPT "Enables PKWARE traditional encryption" ON)
 option(MZ_WZAES "Enables WinZIP AES encryption" ON)
@@ -44,7 +44,7 @@ endif()
 enable_language(C)
 
 # Minizip library version
-set(VERSION "2.10.1")
+set(VERSION "2.10.2")
 
 # Minizip api version
 set(SOVERSION "2.5")
@@ -65,122 +65,36 @@ set(INSTALL_MAN_DIR ${CMAKE_INSTALL_FULL_MANDIR} CACHE PATH "Installation direct
 set(STDLIB_DEF)
 set(MINIZIP_DEF)
 set(MINIZIP_INC)
+set(MINIZIP_LIB)
+set(MINIZIP_LBD)
+set(MINIZIP_DEP)
+set(MINIZIP_LFG)
+
+# Initial source files
+set(MINIZIP_SRC
+    mz_crypt.c
+    mz_os.c
+    mz_strm.c
+    mz_strm_buf.c
+    mz_strm_mem.c
+    mz_strm_split.c
+    mz_zip.c
+    mz_zip_rw.c)
+
+# Initial header files
+set(MINIZIP_HDR
+    mz.h
+    mz_os.h
+    mz_crypt.h
+    mz_strm.h
+    mz_strm_buf.h
+    mz_strm_mem.h
+    mz_strm_split.h
+    mz_strm_os.h
+    mz_zip.h
+    mz_zip_rw.h)
+
 set(PC_PRIVATE_LIBS)
-
-# Check if zlib installation is present
-if(MZ_ZLIB AND NOT MZ_LIBCOMP)
-    if(NOT ZLIB_FORCE_FETCH)
-        find_package(ZLIB QUIET)
-    endif()
-    if(ZLIB_FOUND AND NOT ZLIB_FORCE_FETCH)
-        message(STATUS "Using ZLIB ${ZLIB_VERSION_STRING}")
-        list(APPEND MINIZIP_INC ${ZLIB_INCLUDE_DIRS})
-        set(PC_PRIVATE_LIBS " -lz")
-    else()
-        if(NOT ZLIB_TAG)
-            set(ZLIB_TAG master)
-        endif()
-        if(NOT ZLIB_REPOSITORY)
-            set(ZLIB_REPOSITORY https://github.com/madler/zlib)
-        endif()
-
-        message(STATUS "Fetching ZLIB ${ZLIB_REPOSITORY} ${ZLIB_TAG}")
-
-        if(${CMAKE_VERSION} VERSION_LESS "3.11")
-            message(FATAL_ERROR "CMake 3.11 required to fetch zlib")
-        else()
-            include(FetchContent)
-
-            set(ZLIB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/zlib)
-
-            FetchContent_Declare(zlib
-                GIT_REPOSITORY ${ZLIB_REPOSITORY}
-                GIT_TAG ${ZLIB_TAG}
-                GIT_SHALLOW TRUE
-                SOURCE_DIR ${ZLIB_SOURCE_DIR}
-                BINARY_DIR ${ZLIB_SOURCE_DIR})
-
-            FetchContent_GetProperties(zlib
-                POPULATED ZLIB_POPULATED)
-            if(NOT ZLIB_POPULATED)
-                FetchContent_Populate(zlib)
-                add_subdirectory(${ZLIB_SOURCE_DIR} ${ZLIB_BINARY_DIR} EXCLUDE_FROM_ALL)
-            endif()
-
-            list(APPEND MINIZIP_INC ${ZLIB_SOURCE_DIR})
-        endif()
-    endif()
-endif()
-
-# Check if zstd installation is present
-if(MZ_ZSTD)
-    if(NOT ZSTD_FORCE_FETCH)
-        find_package(ZSTD QUIET)
-    endif()
-    if(ZSTD_FOUND AND NOT ZSTD_FORCE_FETCH)
-        message(STATUS "Using ZSTD")
-        list(APPEND MINIZIP_INC ${ZSTD_INCLUDE_DIRS})
-        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lzstd")
-    else()
-        if(NOT ZSTD_REPOSITORY)
-            set(ZSTD_REPOSITORY https://github.com/facebook/zstd)
-        endif()
-
-        message(STATUS "Fetching ZSTD ${ZSTD_REPOSITORY}")
-
-        if(${CMAKE_VERSION} VERSION_LESS "3.11")
-            message(FATAL_ERROR "CMake 3.11 required to fetch zstd")
-        else()
-            include(FetchContent)
-
-            set(ZSTD_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/zstd)
-
-            FetchContent_Declare(zstd
-                GIT_REPOSITORY ${ZSTD_REPOSITORY}
-                SOURCE_DIR ${ZSTD_SOURCE_DIR}
-                BINARY_DIR ${ZSTD_SOURCE_DIR})
-
-            FetchContent_GetProperties(zstd
-                POPULATED ZSTD_POPULATED)
-            if(NOT ZSTD_POPULATED)
-                FetchContent_Populate(zstd)
-                add_subdirectory(${ZSTD_SOURCE_DIR}/build/cmake ${ZSTD_BINARY_DIR} EXCLUDE_FROM_ALL)
-            endif()
-
-            list(APPEND MINIZIP_INC ${ZSTD_SOURCE_DIR}/lib)
-        endif()
-    endif()
-endif()
-
-# Check if bzip2 installation is present
-if(MZ_BZIP2)
-    find_package(BZip2)
-    if(BZIP2_FOUND)
-        message(STATUS "Using BZIP2 ${BZIP2_VERSION_STRING}")
-        list(APPEND MINIZIP_INC ${BZIP2_INCLUDE_DIRS})
-        list(APPEND MINIZIP_DEF -DHAVE_BZIP2)
-        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lbzip2")
-    endif()
-endif()
-
-# Check to see if openssl installation is present
-if(MZ_OPENSSL)
-    find_package(PkgConfig)
-    if(PKGCONFIG_FOUND)
-        pkg_check_modules(OPENSSL openssl)
-    endif()
-    if(NOT OPENSSL_FOUND)
-        find_package(OpenSSL)
-    endif()
-    if(OPENSSL_FOUND)
-        message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
-
-        list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIR})
-        if(OPENSSL_INCLUDE_DIRS)
-            list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIRS})
-        endif()
-    endif()
-endif()
 
 # Check for system includes
 check_include_file(stdint.h   HAVE_STDINT_H)
@@ -205,87 +119,239 @@ if(NOT HAVE_FSEEKO)
     list(APPEND STDLIB_DEF -DNO_FSEEKO)
 endif()
 
-# Enable compiler warnings
-if(MSVC)
-    add_compile_options(/W3)
-else()
-    add_compile_options(-W -Wall)
-endif()
-# Enable x86 optimizations if supported
-if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-    include(CheckCCompilerFlag)
-
-    macro(enable_option_if_supported option variable)
-        check_c_compiler_flag(
-            "-Werror=unused-command-line-argument ${option}" ${variable})
-        if(${variable})
-            add_compile_options("$<$<CONFIG:Release>:${option}>")
-        endif()
-    endmacro()
-
-    enable_option_if_supported(-msse3 check_opt_sse3)
-    enable_option_if_supported(-msse4.1 check_opt_sse41)
-    enable_option_if_supported(-maes check_opt_aes)
-endif()
-# Set compiler options
-if(MZ_CODE_COVERAGE)
-    if(NOT MSVC)
-        message(STATUS "Code coverage enabled")
-        add_compile_options(-O0 -g -fprofile-arcs -ftest-coverage)
-        if(CMAKE_C_COMPILER_ID MATCHES "(Apple)?[Cc]lang")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
-            link_libraries(gcov)
-        endif()
-    else()
-        set(MZ_CODE_COVERAGE OFF)
+# Checkout remote repository
+macro(clone_repo name url)
+    if(NOT ${name}_REPOSITORY)
+        set(${name}_REPOSITORY ${url})
     endif()
-else()
-    if(MSVC)
-        add_compile_options(
-            $<$<CONFIG:Debug>:/Zi>
-            $<$<CONFIG:Debug>:/Od>
-            $<$<CONFIG:Release>:/Ox>
-            $<$<CONFIG:Release>:/Os>)
-    else()
-        add_compile_options(
-            $<$<CONFIG:Debug>:-g>
-            $<$<CONFIG:Release>:-Os>)
+    if(NOT ${name}_TAG)
+        set(${name}_TAG master)
     endif()
+
+    message(STATUS "Fetching ${name} ${${name}_REPOSITORY} ${${name}_TAG}")
+
+    # Check for FetchContent cmake support
+    if(${CMAKE_VERSION} VERSION_LESS "3.11")
+        message(FATAL_ERROR "CMake 3.11 required to fetch ${name}")
+    else()
+        include(FetchContent)
+
+        string(TOLOWER ${name} name_lower)
+        set(${name}_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/${name_lower})
+
+        FetchContent_Declare(${name}
+            GIT_REPOSITORY ${${name}_REPOSITORY}
+            GIT_TAG ${${name}_TAG}
+            SOURCE_DIR ${${name}_SOURCE_DIR}
+            BINARY_DIR ${${name}_SOURCE_DIR})
+
+        FetchContent_GetProperties(${name} POPULATED ${name}_POPULATED)
+
+        if(NOT ${name}_POPULATED)
+            FetchContent_Populate(${name})
+        endif()
+    endif()
+endmacro()
+
+if(MZ_LIBCOMP)
+    # Use Apple libcompression
+    list(APPEND MINIZIP_DEF -DHAVE_LIBCOMP)
+    list(APPEND MINIZIP_SRC mz_strm_libcomp.c)
+    list(APPEND MINIZIP_HDR mz_strm_libcomp.h)
+    list(APPEND MINIZIP_LIB compression)
+elseif(MZ_ZLIB)
+    # Check if zlib is present
+    if(NOT ZLIB_FORCE_FETCH)
+        find_package(ZLIB QUIET)
+        set(ZLIB_VERSION ${ZLIB_VERSION_STRING})
+    endif()
+    if(ZLIB_FOUND AND NOT ZLIB_FORCE_FETCH)
+        message(STATUS "Using ZLIB ${ZLIB_VERSION}")
+
+        list(APPEND MINIZIP_INC ${ZLIB_INCLUDE_DIRS})
+        list(APPEND MINIZIP_LIB ${ZLIB_LIBRARIES})
+        list(APPEND MINIZIP_LBD ${ZLIB_LIBRARY_DIRS})
+
+        set(PC_PRIVATE_LIBS " -lz")
+    else()
+        clone_repo(ZLIB https://github.com/madler/zlib)
+
+        # Don't automatically add all targets to the solution
+        add_subdirectory(${ZLIB_SOURCE_DIR} ${ZLIB_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+        list(APPEND MINIZIP_INC ${ZLIB_SOURCE_DIR})
+        # Have to add zlib to install targets
+        if(NOT DEFINED BUILD_SHARED_LIBS OR NOT ${BUILD_SHARED_LIBS})
+            list(APPEND MINIZIP_DEP zlibstatic)
+        else()
+            list(APPEND MINIZIP_DEP zlib)
+        endif()
+    endif()
+
+    list(APPEND MINIZIP_DEF -DHAVE_ZLIB)
+    if(ZLIB_COMPAT)
+        list(APPEND MINIZIP_DEF -DZLIB_COMPAT)
+    endif()
+    list(APPEND MINIZIP_SRC mz_strm_zlib.c)
+    list(APPEND MINIZIP_HDR mz_strm_zlib.h)
 endif()
 
-# Initial source files
-set(MINIZIP_SRC
-    mz_crypt.c
-    mz_os.c
-    mz_strm.c
-    mz_strm_buf.c
-    mz_strm_mem.c
-    mz_strm_split.c
-    mz_zip.c
-    mz_zip_rw.c)
+if(MZ_BZIP2)
+    # Check if bzip2 is present
+    find_package(BZip2)
+    if(BZIP2_FOUND)
+        message(STATUS "Using BZIP2 ${BZIP2_VERSION_STRING}")
 
-# Initial header files
-set(MINIZIP_PUBLIC_HEADERS
-    mz.h
-    mz_os.h
-    mz_crypt.h
-    mz_strm.h
-    mz_strm_buf.h
-    mz_strm_mem.h
-    mz_strm_split.h
-    mz_strm_os.h
-    mz_zip.h
-    mz_zip_rw.h)
+        list(APPEND MINIZIP_INC ${BZIP2_INCLUDE_DIRS})
+        list(APPEND MINIZIP_LIB ${BZIP2_LIBRARIES})
+        list(APPEND MINIZIP_LBD ${BZIP2_LIBRARY_DIRS})
+
+        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lbzip2")
+    else()
+        clone_repo(BZIP2 https://sourceware.org/git/bzip2.git)
+
+        # BZip2 repository does not support cmake so we have to create
+        # the bzip2 library ourselves
+        set(BZIP2_SRC
+            lib/bzip2/blocksort.c
+            lib/bzip2/bzlib.c
+            lib/bzip2/compress.c
+            lib/bzip2/crctable.c
+            lib/bzip2/decompress.c
+            lib/bzip2/huffman.c
+            lib/bzip2/randtable.c)
+
+        set(BZIP2_HDR
+            lib/bzip2/bzlib.h
+            lib/bzip2/bzlib_private.h)
+
+        add_library(bzip2 STATIC ${BZIP2_SRC} ${BZIP2_HDR})
+
+        target_compile_definitions(bzip2 PRIVATE -DBZ_NO_STDIO)
+
+        list(APPEND MINIZIP_DEP bzip2)
+        list(APPEND MINIZIP_INC lib/bzip2)
+    endif()
+
+    list(APPEND MINIZIP_DEF -DHAVE_BZIP2)
+    list(APPEND MINIZIP_SRC mz_strm_bzip.c)
+    list(APPEND MINIZIP_HDR mz_strm_bzip.h)
+endif()
+
+if(MZ_LZMA)
+    # Check if liblzma is present
+    if(NOT LIBLZMA_FORCE_FETCH)
+        find_package(PkgConfig QUIET)
+        if(PKGCONFIG_FOUND)
+            pkg_check_modules(LIBLZMA liblzma)
+        endif()
+        if(NOT LIBLZMA_FOUND)
+            find_package(LibLZMA QUIET)
+            set(LIBLZMA_VERSION ${LIBLZMA_VERSION_STRING})
+        endif()
+    endif()
+
+    if(LIBLZMA_FOUND AND NOT LIBLZMA_FORCE_FETCH)
+        message(STATUS "Using LZMA ${LIBLZMA_VERSION}")
+
+        list(APPEND MINIZIP_INC ${LIBLZMA_INCLUDE_DIRS})
+        list(APPEND MINIZIP_LIB ${LIBLZMA_LIBRARIES})
+
+        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lliblzma")
+    else()
+        clone_repo(LIBLZMA https://git.tukaani.org/xz.git)
+
+        # Don't automatically add all targets to the solution
+        add_subdirectory(${LIBLZMA_SOURCE_DIR} ${LIBLZMA_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+        list(APPEND MINIZIP_INC ${LIBLZMA_SOURCE_DIR}/src/liblzma/api)
+        list(APPEND MINIZIP_DEP liblzma)
+        list(APPEND MINIZIP_LIB ${LIBLZMA_TARGET})
+    endif()
+
+    list(APPEND MINIZIP_DEF -DHAVE_LZMA -DLZMA_API_STATIC)
+    list(APPEND MINIZIP_SRC mz_strm_lzma.c)
+    list(APPEND MINIZIP_HDR mz_strm_lzma.h)
+endif()
+
+if(MZ_ZSTD)
+    # Check if zstd is present
+    if(NOT ZSTD_FORCE_FETCH)
+        find_package(PkgConfig QUIET)
+        if(PKGCONFIG_FOUND)
+            pkg_check_modules(ZSTD libzstd)
+        endif()
+        if(NOT ZSTD_FOUND)
+            find_package(ZSTD QUIET)
+            set(ZSTD_VERSION ${ZSTD_VERSION_STRING})
+        endif()
+    endif()
+
+    if(ZSTD_FOUND AND NOT ZSTD_FORCE_FETCH)
+        message(STATUS "Using ZSTD ${ZSTD_VERSION}")
+
+        list(APPEND MINIZIP_INC ${ZSTD_INCLUDE_DIRS})
+        list(APPEND MINIZIP_LIB ${ZSTD_LIBRARIES})
+        list(APPEND MINIZIP_LBD ${ZSTD_LIBRARY_DIRS})
+
+        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lzstd")
+    else()
+        clone_repo(ZSTD https://github.com/facebook/zstd)
+
+        # Don't automatically add all targets to the solution
+        add_subdirectory(${ZSTD_SOURCE_DIR}/build/cmake ${ZSTD_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+        list(APPEND MINIZIP_INC ${ZSTD_SOURCE_DIR}/lib)
+        if(NOT DEFINED BUILD_SHARED_LIBS OR NOT ${BUILD_SHARED_LIBS})
+            list(APPEND MINIZIP_DEP libzstd_static)
+        else()
+            list(APPEND MINIZIP_DEP libzstd_shared)
+        endif()
+        list(APPEND MINIZIP_LIB ${ZSTD_TARGET})
+    endif()
+
+    list(APPEND MINIZIP_DEF -DHAVE_ZSTD)
+    list(APPEND MINIZIP_SRC mz_strm_zstd.c)
+    list(APPEND MINIZIP_HDR mz_strm_zstd.h)
+endif()
+
+if(MZ_OPENSSL)
+    # Check to see if openssl installation is present
+    find_package(PkgConfig)
+    if(PKGCONFIG_FOUND)
+        pkg_check_modules(OPENSSL openssl)
+    endif()
+    if(NOT OPENSSL_FOUND)
+        find_package(OpenSSL)
+    endif()
+
+    if(OPENSSL_FOUND)
+        message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
+
+        list(APPEND MINIZIP_SRC mz_crypt_openssl.c)
+        list(APPEND MINIZIP_LIB ${OPENSSL_LIBRARIES})
+        list(APPEND MINIZIP_LBD ${OPENSSL_LIBRARY_DIRS})
+        list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIR})
+
+        if(OPENSSL_INCLUDE_DIRS)
+            list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIRS})
+        endif()
+    endif()
+endif()
 
 # Windows specific
 if(WIN32)
     list(APPEND MINIZIP_DEF -D_CRT_SECURE_NO_DEPRECATE)
-
-    list(APPEND MINIZIP_SRC "mz_os_win32.c" "mz_strm_os_win32.c")
+    list(APPEND MINIZIP_SRC mz_os_win32.c mz_strm_os_win32.c)
     if(MZ_PKCRYPT OR MZ_WZAES)
-        if(NOT MZ_OPENSSL AND NOT OPENSSL_FOUND AND NOT MZ_BRG)
-            list(APPEND MINIZIP_SRC "mz_crypt_win32.c")
+        if(NOT MZ_BRG)
+            if(NOT MZ_OPENSSL AND NOT OPENSSL_FOUND )
+                list(APPEND MINIZIP_SRC mz_crypt_win32.c)
+            endif()
+            # GCC doesn't support #pragma lib
+            if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+                list(APPEND MINIZIP_LIB crypt32.lib)
+            endif()
         endif()
     endif()
 endif()
@@ -296,14 +362,25 @@ endif()
 # Unix specific
 if(UNIX)
     list(APPEND STDLIB_DEF -D_POSIX_C_SOURCE=200112L)
-    list(APPEND MINIZIP_SRC "mz_os_posix.c" "mz_strm_os_posix.c")
+    list(APPEND MINIZIP_SRC mz_os_posix.c mz_strm_os_posix.c)
 
     if((MZ_PKCRYPT OR MZ_WZAES) AND NOT (MZ_OPENSSL AND OPENSSL_FOUND))
 
         if(APPLE AND NOT MZ_BRG)
+            message(STATUS "Using CoreFoundation Framework")
+            find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+
+            list(APPEND MINIZIP_LIB ${COREFOUNDATION_LIBRARY})
+
+            message(STATUS "Using Security Framework")
+            find_library(SECURITY_LIBRARY Security)
+
+            list(APPEND MINIZIP_LIB ${SECURITY_LIBRARY})
+            list(APPEND MINIZIP_LFG "-Wl,-F/Library/Frameworks")
+
             check_include_file(CommonCrypto/CommonCrypto.h COMMONCRYPTO_FOUND)
             if(COMMONCRYPTO_FOUND)
-                list(APPEND MINIZIP_SRC "mz_crypt_apple.c")
+                list(APPEND MINIZIP_SRC mz_crypt_apple.c)
             else()
                 message(STATUS "CommonCrypto not found, using BRG instead")
                 set(MZ_BRG TRUE)
@@ -334,10 +411,13 @@ if(UNIX)
             if(LIBBSD_FOUND)
                 check_library_exists("${LIBBSD_LIBRARIES}" "arc4random_buf"
                     "${LIBBSD_LIBRARY_DIRS}" HAVE_LIBBSD_ARC4RANDOM_BUF)
+
                 if(HAVE_LIBBSD_ARC4RANDOM_BUF)
-                    list(APPEND MINIZIP_DEF -DHAVE_LIBBSD)
-                    list(APPEND MINIZIP_DEF -DHAVE_ARC4RANDOM_BUF)
+                    list(APPEND MINIZIP_DEF -DHAVE_LIBBSD -DHAVE_ARC4RANDOM_BUF)
                     list(APPEND MINIZIP_INC ${LIBBSD_INCLUDE_DIRS})
+                    list(APPEND MINIZIP_LIB ${LIBBSD_LIBRARIES})
+                    list(APPEND MINIZIP_LBD ${LIBBSD_LIBRARY_DIRS})
+
                     link_directories(${LIBBSD_LIBRARY_DIRS})
                 endif()
             else()
@@ -353,19 +433,101 @@ if(UNIX)
     find_package(Iconv QUIET)
     if(Iconv_FOUND)
         message(STATUS "Using Iconv")
+
         list(APPEND MINIZIP_DEF -DHAVE_ICONV)
         list(APPEND MINIZIP_INC ${Iconv_INCLUDE_DIRS})
+        if(NOT Iconv_IS_BUILT_IN)
+            list(APPEND MINIZIP_LIB ${Iconv_LIBRARIES})
+            list(APPEND MINIZIP_LBD ${Iconv_LIBRARY_DIRS})
+        endif()
+
         set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -liconv")
     else()
         message(WARNING "Limited encoding support due to missing iconv")
     endif()
 endif()
 
+# Setup predefined macros
+if(MZ_COMPRESS_ONLY)
+    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_DECOMPRESSION)
+endif()
+if(MZ_DECOMPRESS_ONLY)
+    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_COMPRESSION)
+endif()
+if(MZ_FILE32_API)
+    list(APPEND MINIZIP_DEF -DMZ_FILE32_API)
+endif()
+
+# Determine if signing is supported
+if(NOT MZ_PKCRYPT AND NOT MZ_WZAES)
+    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_ENCRYPTION)
+    message(STATUS "Signing not supported when encryption is disabled")
+    set(MZ_SIGNING OFF)
+endif()
+if(MZ_BRG OR (MZ_OPENSSL AND NOT OPENSSL_FOUND))
+    message(STATUS "Signing not supported with current configuration")
+    set(MZ_SIGNING OFF)
+endif()
+
+if(MZ_SIGNING)
+    list(APPEND MINIZIP_DEF -DMZ_ZIP_SIGNING)
+endif()
+
+# Include traditional PKWare encryption
+if(MZ_PKCRYPT)
+    list(APPEND MINIZIP_DEF -DHAVE_PKCRYPT)
+    list(APPEND MINIZIP_SRC mz_strm_pkcrypt.c)
+    list(APPEND MINIZIP_HDR mz_strm_pkcrypt.h)
+endif()
+
+# Include WinZIP AES encryption
+if(MZ_WZAES)
+    list(APPEND MINIZIP_DEF -DHAVE_WZAES)
+    list(APPEND MINIZIP_SRC mz_strm_wzaes.c)
+    list(APPEND MINIZIP_HDR mz_strm_wzaes.h)
+endif()
+
+# Include Brian Gladman's crypto library
+if(MZ_BRG)
+    clone_repo(AES https://github.com/BrianGladman/aes)
+    clone_repo(SHA https://github.com/BrianGladman/sha)
+
+    set(BRG_AES_SRC
+        lib/aes/brg_endian.h
+        lib/aes/brg_types.h
+        lib/aes/aescrypt.c
+        lib/aes/aeskey.c
+        lib/aes/aestab.c
+        lib/aes/aes_ni.c)
+
+    set(BRG_AES_HDR
+        lib/aes/aes.h
+        lib/aes/aesopt.h
+        lib/aes/aestab.h
+        lib/aes/aes_ni.h)
+
+    set(BRG_SHA_SRC
+        lib/sha/hmac.c
+        lib/sha/sha1.c
+        lib/sha/sha2.c)
+
+    set(BRG_SHA_HDR
+        lib/sha/brg_endian.h
+        lib/sha/brg_types.h
+        lib/sha/hmac.h
+        lib/sha/sha1.h
+        lib/sha/sha2.h)
+
+    add_library(aes STATIC ${BRG_AES_SRC} ${BRG_AES_HDR})
+    add_library(sha STATIC ${BRG_SHA_SRC} ${BRG_SHA_HDR})
+
+    list(APPEND MINIZIP_SRC mz_crypt_brg.c)
+    list(APPEND MINIZIP_INC lib/aes lib/sha)
+    list(APPEND MINIZIP_DEP aes sha)
+endif()
+
 # Include compatibility layer
 if(MZ_COMPAT)
-    list(APPEND MINIZIP_SRC "mz_compat.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_compat.h")
-
     set(COMPAT_HEADER "\
 /* file.h -- Compatibility layer shim\n\
    part of the MiniZip project\n\n\
@@ -380,293 +542,53 @@ if(MZ_COMPAT)
     string(REPLACE "file.h" "zip.h" ZIP_COMPAT_HEADER ${COMPAT_HEADER})
     string(REPLACE "MZ_COMPAT_FILE" "MZ_COMPAT_ZIP" ZIP_COMPAT_HEADER ${ZIP_COMPAT_HEADER})
     file(WRITE "zip.h" ${ZIP_COMPAT_HEADER})
-    list(APPEND MINIZIP_PUBLIC_HEADERS "zip.h")
 
     string(REPLACE "file.h" "unzip.h" UNZIP_COMPAT_HEADER ${COMPAT_HEADER})
     string(REPLACE "MZ_COMPAT_FILE" "MZ_COMPAT_UNZIP" UNZIP_COMPAT_HEADER ${UNZIP_COMPAT_HEADER})
     file(WRITE "unzip.h" ${UNZIP_COMPAT_HEADER})
-    list(APPEND MINIZIP_PUBLIC_HEADERS "unzip.h")
 
     if(MZ_COMPAT_VERSION)
         list(APPEND MINIZIP_DEF -DMZ_COMPAT_VERSION=${MZ_COMPAT_VERSION})
     endif()
+    list(APPEND MINIZIP_SRC mz_compat.c)
+    list(APPEND MINIZIP_HDR mz_compat.h zip.h unzip.h)
 endif()
 
-# Setup predefined macros
-if(MZ_COMPRESS_ONLY)
-    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_DECOMPRESSION)
-endif()
-if(MZ_DECOMPRESS_ONLY)
-    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_COMPRESSION)
-endif()
-if(NOT MZ_PKCRYPT AND NOT MZ_WZAES)
-    list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_ENCRYPTION)
-    message(STATUS "Signing not supported when encryption is disabled")
-    set(MZ_SIGNING OFF)
-endif()
-if(MZ_BRG OR (MZ_OPENSSL AND NOT OPENSSL_FOUND))
-    message(STATUS "Signing not supported with current configuration")
-    set(MZ_SIGNING OFF)
-endif()
-if(MZ_SIGNING)
-    list(APPEND MINIZIP_DEF -DMZ_ZIP_SIGNING)
-endif()
-if(MZ_FILE32_API)
-    list(APPEND MINIZIP_DEF -DMZ_FILE32_API)
-endif()
-
-# Include PKCRYPT
-if(MZ_PKCRYPT)
-    list(APPEND MINIZIP_DEF -DHAVE_PKCRYPT)
-
-    list(APPEND MINIZIP_SRC "mz_strm_pkcrypt.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_pkcrypt.h")
-endif()
-
-# Include WinZIP AES
-if(MZ_WZAES)
-    list(APPEND MINIZIP_DEF -DHAVE_WZAES)
-
-    list(APPEND MINIZIP_SRC "mz_strm_wzaes.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_wzaes.h")
-endif()
-
-# Include BRG
-if(MZ_BRG)
-    list(APPEND MINIZIP_SRC "mz_crypt_brg.c")
-
-    set(BRG_SRC
-        lib/brg/aescrypt.c
-        lib/brg/aeskey.c
-        lib/brg/aestab.c
-        lib/brg/hmac.c
-        lib/brg/sha1.c
-        lib/brg/sha2.c)
-
-    set(BRG_PUBLIC_HEADERS
-        lib/brg/aes.h
-        lib/brg/aesopt.h
-        lib/brg/aestab.h
-        lib/brg/brg_endian.h
-        lib/brg/brg_types.h
-        lib/brg/hmac.h
-        lib/brg/sha1.h
-        lib/brg/sha2.h)
-
-    list(APPEND MINIZIP_INC lib/brg)
-
-    source_group("BRG" FILES ${BRG_SRC} ${BRG_PUBLIC_HEADERS})
-endif()
-
-# Include OpenSSL
-if(MZ_OPENSSL AND OPENSSL_FOUND)
-    list(APPEND MINIZIP_SRC "mz_crypt_openssl.c")
-endif()
-
-# Include ZLIB
-if(MZ_ZLIB)
-    if(MZ_LIBCOMP)
-        list(APPEND MINIZIP_DEF -DHAVE_LIBCOMP)
-
-        list(APPEND MINIZIP_SRC "mz_strm_libcomp.c")
-        list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_libcomp.h")
-    else()
-        list(APPEND MINIZIP_DEF -DHAVE_ZLIB)
-
-        if(ZLIB_COMPAT)
-            list(APPEND MINIZIP_DEF -DZLIB_COMPAT)
+# Set compiler options
+if(MZ_CODE_COVERAGE)
+    if(NOT MSVC)
+        message(STATUS "Code coverage enabled")
+        add_compile_options(-O0 -g -fprofile-arcs -ftest-coverage)
+        if(CMAKE_C_COMPILER_ID MATCHES "(Apple)?[Cc]lang")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
+            link_libraries(gcov)
         endif()
-
-        list(APPEND MINIZIP_SRC "mz_strm_zlib.c")
-        list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_zlib.h")
-    endif()
-endif()
-
-# Include ZSTD
-if(MZ_ZSTD)
-    list(APPEND MINIZIP_DEF -DHAVE_ZSTD)
-    list(APPEND MINIZIP_SRC "mz_strm_zstd.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_zstd.h")
-endif()
-
-# Include BZIP2
-if(MZ_BZIP2)
-    list(APPEND MINIZIP_DEF -DHAVE_BZIP2)
-
-    list(APPEND MINIZIP_SRC "mz_strm_bzip.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_bzip.h")
-
-    if(NOT BZIP2_FOUND)
-        list(APPEND MINIZIP_DEF -DBZ_NO_STDIO)
-
-        set(BZIP2_SRC
-            lib/bzip2/blocksort.c
-            lib/bzip2/bzlib.c
-            lib/bzip2/compress.c
-            lib/bzip2/crctable.c
-            lib/bzip2/decompress.c
-            lib/bzip2/huffman.c
-            lib/bzip2/randtable.c)
-
-        set(BZIP2_PUBLIC_HEADERS
-            lib/bzip2/bzlib.h
-            lib/bzip2/bzlib_private.h)
-
-        list(APPEND MINIZIP_INC lib/bzip2)
-
-        source_group("BZip2" FILES ${BZIP2_SRC} ${BZIP2_PUBLIC_HEADERS})
-    endif()
-endif()
-
-# Include LZMA
-if(MZ_LZMA)
-    check_include_file(limits.h     HAVE_LIMITS_H)
-    check_include_file(string.h     HAVE_STRING_H)
-    check_include_file(strings.h    HAVE_STRINGS_H)
-    check_include_file(memory.h     HAVE_MEMORY_H)
-    check_include_file(stdbool.h    HAVE_STDBOOL_H)
-    check_include_file(immintrin.h  HAVE_IMMINTRIN_H)
-
-    list(APPEND MINIZIP_DEF -DHAVE_CONFIG_H)
-
-    if(HAVE_LIMITS_H)
-        list(APPEND MINIZIP_DEF -DHAVE_LIMITS_H)
-    endif()
-    if(HAVE_STRING_H)
-        list(APPEND MINIZIP_DEF -DHAVE_STRING_H)
-    endif()
-    if(HAVE_STRINGS_H)
-        list(APPEND MINIZIP_DEF -DHAVE_STRINGS_H)
-    endif()
-    if(HAVE_MEMORY_H)
-        list(APPEND MINIZIP_DEF -DHAVE_MEMORY_H)
-    endif()
-    if(HAVE_STDBOOL_H)
-        list(APPEND MINIZIP_DEF -DHAVE_STDBOOL_H)
-    endif()
-    if(HAVE_IMMINTRIN_H)
-        list(APPEND MINIZIP_DEF -DHAVE_IMMINTRIN_H)
-    endif()
-
-    list(APPEND MINIZIP_DEF -DHAVE_LZMA)
-    list(APPEND MINIZIP_DEF -DLZMA_API_STATIC)
-
-    list(APPEND MINIZIP_SRC "mz_strm_lzma.c")
-    list(APPEND MINIZIP_PUBLIC_HEADERS "mz_strm_lzma.h")
-
-    set(LZMA_CHECK_SRC
-        lib/liblzma/check/check.c
-        lib/liblzma/check/crc32_fast.c
-        lib/liblzma/check/crc32_table.c)
-    set(LZMA_COMMON_SRC
-        lib/liblzma/common/alone_decoder.c
-        lib/liblzma/common/alone_encoder.c
-        lib/liblzma/common/common.c
-        lib/liblzma/common/filter_encoder.c)
-    set(LZMA_LZ_SRC
-        lib/liblzma/lz/lz_decoder.c
-        lib/liblzma/lz/lz_encoder.c
-        lib/liblzma/lz/lz_encoder_mf.c)
-    set(LZMA_LZMA_SRC
-        lib/liblzma/lzma/fastpos.h
-        lib/liblzma/lzma/fastpos_table.c
-        lib/liblzma/lzma/lzma_decoder.c
-        lib/liblzma/lzma/lzma_encoder.c
-        lib/liblzma/lzma/lzma_encoder_optimum_fast.c
-        lib/liblzma/lzma/lzma_encoder_optimum_normal.c
-        lib/liblzma/lzma/lzma_encoder_presets.c)
-    set(LZMA_RANGECODER_SRC
-        lib/liblzma/rangecoder/price_table.c)
-
-    set(LZMA_CONFIG_HEADERS
-        lib/liblzma/config.h)
-    set(LZMA_API_HEADERS
-        lib/liblzma/api/lzma.h
-        lib/liblzma/api/lzma/base.h
-        lib/liblzma/api/lzma/check.h
-        lib/liblzma/api/lzma/container.h
-        lib/liblzma/api/lzma/filter.h
-        lib/liblzma/api/lzma/lzma12.h
-        lib/liblzma/api/lzma/version.h
-        lib/liblzma/api/lzma/vli.h)
-    set(LZMA_CHECK_HEADERS
-        lib/liblzma/check/check.h
-        lib/liblzma/check/crc32_table_be.h
-        lib/liblzma/check/crc32_table_le.h
-        lib/liblzma/check/crc_macros.h)
-    set(LZMA_COMMON_HEADERS
-        lib/liblzma/common/alone_decoder.h
-        lib/liblzma/common/common.h
-        lib/liblzma/common/filter_encoder.h
-        lib/liblzma/common/index.h
-        lib/liblzma/common/memcmplen.h
-        lib/liblzma/common/sysdefs.h
-        lib/liblzma/common/tuklib_common.h
-        lib/liblzma/common/tuklib_config.h
-        lib/liblzma/common/tuklib_integer.h)
-    set(LZMA_LZ_HEADERS
-        lib/liblzma/lz/lz_decoder.h
-        lib/liblzma/lz/lz_encoder.h
-        lib/liblzma/lz/lz_encoder_hash.h
-        lib/liblzma/lz/lz_encoder_hash_table.h)
-    set(LZMA_LZMA_HEADERS
-        lib/liblzma/lzma/lzma2_encoder.h
-        lib/liblzma/lzma/lzma_common.h
-        lib/liblzma/lzma/lzma_decoder.h
-        lib/liblzma/lzma/lzma_encoder.h
-        lib/liblzma/lzma/lzma_encoder_private.h)
-    set(LZMA_RANGECODER_HEADERS
-        lib/liblzma/rangecoder/price.h
-        lib/liblzma/rangecoder/range_common.h
-        lib/liblzma/rangecoder/range_decoder.h
-        lib/liblzma/rangecoder/range_encoder.h)
-
-    set(LZMA_PUBLIC_HEADERS
-        ${LZMA_CONFIG_HEADERS}
-        ${LZMA_API_HEADERS}
-        ${LZMA_CHECK_HEADERS}
-        ${LZMA_COMMON_HEADERS}
-        ${LZMA_LZ_HEADERS}
-        ${LZMA_LZMA_HEADERS}
-        ${LZMA_RANGECODER_HEADERS})
-
-    set(LZMA_SRC
-        ${LZMA_CHECK_SRC}
-        ${LZMA_COMMON_SRC}
-        ${LZMA_LZ_SRC}
-        ${LZMA_LZMA_SRC}
-        ${LZMA_RANGECODER_SRC})
-
-    list(APPEND MINIZIP_INC lib/liblzma
-                        lib/liblzma/api
-                        lib/liblzma/check
-                        lib/liblzma/common
-                        lib/liblzma/lz
-                        lib/liblzma/lzma
-                        lib/liblzma/rangecoder)
-
-    source_group("LZMA" FILES ${LZMA_CONFIG_HEADERS})
-    source_group("LZMA\\API" FILES ${LZMA_API_HEADERS})
-    source_group("LZMA\\Check" FILES ${LZMA_CHECK_SRC} ${LZMA_CHECK_HEADERS})
-    source_group("LZMA\\Common" FILES ${LZMA_COMMON_SRC} ${LZMA_COMMON_HEADERS})
-    source_group("LZMA\\LZ" FILES ${LZMA_LZ_SRC} ${LZMA_LZ_HEADERS})
-    source_group("LZMA\\LZMA" FILES ${LZMA_LZMA_SRC} ${LZMA_LZMA_HEADERS})
-    source_group("LZMA\\RangeCoder" FILES ${LZMA_RANGECODER_SRC} ${LZMA_RANGECODER_HEADERS})
-endif()
-
-macro(mz_configure_target target)
-    target_compile_definitions(${target} PRIVATE ${STDLIB_DEF})
-    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    if(MZ_CODE_COVERAGE)
-        set_target_properties(${target} PROPERTIES
+        set_property(DIRECTORY PROPERTY
             GCC_INSTRUMENT_PROGRAM_FLOW_ARCS YES
             GCC_GENERATE_TEST_COVERAGE_FILES YES)
+    else()
+        set(MZ_CODE_COVERAGE OFF)
     endif()
-endmacro()
+else()
+    if(MSVC)
+        add_compile_options(
+            $<$<CONFIG:Debug>:/Zi>
+            $<$<CONFIG:Debug>:/Od>
+            $<$<CONFIG:Debug>:/W3>
+            $<$<CONFIG:Release>:/Ox>
+            $<$<CONFIG:Release>:/Os>)
+    else()
+        add_compile_options(
+            $<$<CONFIG:Debug>:-g>
+            $<$<CONFIG:Debug>:-Wall>
+            $<$<CONFIG:Release>:-Os>)
+    endif()
+endif()
+
+list(APPEND MINIZIP_INC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Create minizip library
-source_group("Minizip" FILES ${MINIZIP_SRC} ${MINIZIP_PUBLIC_HEADERS})
-
 project(minizip${MZ_PROJECT_SUFFIX} VERSION ${VERSION})
 
 if(NOT ${MZ_PROJECT_SUFFIX} STREQUAL "")
@@ -681,20 +603,17 @@ set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/cmake/${PROJECT_NAME}"
 set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig"
     CACHE PATH "Installation directory for pkgconfig (.pc) files")
 
-add_library(${PROJECT_NAME}
-                ${MINIZIP_SRC} ${MINIZIP_PUBLIC_HEADERS}
-                ${BRG_SRC} ${BRG_PUBLIC_HEADERS}
-                ${BZIP2_SRC} ${BZIP2_PUBLIC_HEADERS}
-                ${LZMA_SRC} ${LZMA_PUBLIC_HEADERS})
-
-mz_configure_target(${PROJECT_NAME})
+add_library(${PROJECT_NAME} ${MINIZIP_SRC} ${MINIZIP_HDR})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
-                        VERSION ${VERSION}
-                        SOVERSION ${SOVERSION}
-                        LINKER_LANGUAGE C
-                        DEFINE_SYMBOL "MZ_EXPORTS")
+                      VERSION ${VERSION}
+                      SOVERSION ${SOVERSION}
+                      LINKER_LANGUAGE C
+                      DEFINE_SYMBOL "MZ_EXPORTS")
 
+if(MINIZIP_LFG)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS ${MINIZIP_LFG})
+endif()
 if(MSVC)
     # VS debugger has problems when executable and static library are named the same
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME lib${PROJECT_NAME})
@@ -706,82 +625,18 @@ if(MZ_LZMA)
     set_target_properties(${PROJECT_NAME} PROPERTIES C_STANDARD 99)
 endif()
 
+target_link_libraries(${PROJECT_NAME} PRIVATE ${MINIZIP_LIB} ${MINIZIP_DEP})
+target_link_directories(${PROJECT_NAME} PUBLIC ${MINIZIP_LBD})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${STDLIB_DEF} ${MINIZIP_DEF})
 target_include_directories(${PROJECT_NAME} PRIVATE ${MINIZIP_INC})
-target_compile_definitions(${PROJECT_NAME} PRIVATE ${MINIZIP_DEF})
-
-# Link with external libraries
-if(MZ_ZLIB AND NOT MZ_LIBCOMP)
-    if(ZLIB_FOUND)
-        target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
-    else()
-        # Have to add zlib to install targets
-        if(NOT DEFINED BUILD_SHARED_LIBS OR NOT ${BUILD_SHARED_LIBS})
-            set(ZLIB_TARGET zlibstatic)
-        else()
-            set(ZLIB_TARGET zlib)
-        endif()
-        target_link_libraries(${PROJECT_NAME} ${ZLIB_TARGET})
-        if(MZ_BUILD_UNIT_TEST)
-            # Can't disable zlib testing so ctest tries to run zlib example app
-            add_dependencies(${PROJECT_NAME} example)
-            if(HAVE_OFF64_T)
-                add_dependencies(${PROJECT_NAME} example64)
-            endif()
-        endif()
-    endif()
-endif()
-if(MZ_ZSTD)
-    if(ZSTD_FOUND)
-        target_link_libraries(${PROJECT_NAME} ${ZSTD_LIBRARIES})
-    else()
-        # Have to add zlib to install targets
-        if(NOT DEFINED BUILD_SHARED_LIBS OR NOT ${BUILD_SHARED_LIBS})
-            set(ZSTD_TARGET libzstd_static)
-        else()
-            set(ZSTD_TARGET libzstd_shared)
-        endif()
-        target_link_libraries(${PROJECT_NAME} ${ZSTD_TARGET})
-    endif()
-endif()
-if(MZ_BZIP2 AND BZIP2_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${BZIP2_LIBRARIES})
-endif()
-if(MZ_LIBCOMP)
-    target_link_libraries(${PROJECT_NAME} compression)
-endif()
-if(Iconv_FOUND AND NOT Iconv_IS_BUILT_IN)
-    target_link_libraries(${PROJECT_NAME} ${Iconv_LIBRARIES})
-endif()
-if(MZ_OPENSSL AND OPENSSL_FOUND)
-    target_link_libraries(${PROJECT_NAME} ${OPENSSL_LIBRARIES})
-elseif(UNIX)
-    if(APPLE AND (MZ_PKCRYPT OR MZ_WZAES) AND NOT MZ_BRG)
-        message(STATUS "Using CoreFoundation Framework")
-        find_library(COREFOUNDATION_LIBRARY CoreFoundation)
-        target_link_libraries(${PROJECT_NAME} ${COREFOUNDATION_LIBRARY})
-        message(STATUS "Using Security Framework")
-        find_library(SECURITY_LIBRARY Security)
-        target_link_libraries(${PROJECT_NAME} ${SECURITY_LIBRARY})
-        set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-Wl,-F/Library/Frameworks")
-    else()
-        target_link_libraries(${PROJECT_NAME} ${LIBBSD_LIBRARIES})
-    endif()
-elseif(WIN32)
-    if((MZ_PKCRYPT OR MZ_WZAES) AND NOT MZ_BRG)
-        # GCC doesn't support #pragma lib
-        if(CMAKE_C_COMPILER_ID MATCHES "GNU")
-            target_link_libraries(${PROJECT_NAME} crypt32.lib)
-        endif()
-    endif()
-endif()
-
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<INSTALL_INTERFACE:${INSTALL_INC_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
 # Install files
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
-    install(TARGETS ${PROJECT_NAME} ${ZLIB_TARGET} EXPORT ${PROJECT_NAME}
+    install(TARGETS ${PROJECT_NAME} ${MINIZIP_DEP}
+            EXPORT ${PROJECT_NAME}
             INCLUDES DESTINATION "${INSTALL_INC_DIR}"
             RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
             ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
@@ -807,8 +662,8 @@ if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
                   ${CMAKE_CURRENT_BINARY_DIR}/minizip-config.cmake
             DESTINATION "${INSTALL_CMAKE_DIR}")
 endif()
-if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
-    install(FILES ${MINIZIP_PUBLIC_HEADERS} DESTINATION "${INSTALL_INC_DIR}")
+if(NOT SKIP_INSTALL_HDR AND NOT SKIP_INSTALL_ALL)
+    install(FILES ${MINIZIP_HDR} DESTINATION "${INSTALL_INC_DIR}")
 endif()
 if(NOT SKIP_INSTALL_FILES AND NOT SKIP_INSTALL_ALL)
     install(FILES ${MINIZIP_PC} DESTINATION "${INSTALL_PKGCONFIG_DIR}")
@@ -817,10 +672,10 @@ endif()
 # Build test executables
 if(MZ_BUILD_TEST)
     if(MZ_ZLIB AND NOT MZ_LIBCOMP)
-        add_executable(minigzip_cmd "minigzip.c")
-        mz_configure_target(minigzip_cmd)
+        add_executable(minigzip_cmd minigzip.c)
         set_target_properties(minigzip_cmd PROPERTIES OUTPUT_NAME minigzip)
-        target_compile_definitions(minigzip_cmd PRIVATE ${MINIZIP_DEF})
+        target_compile_definitions(minigzip_cmd PRIVATE ${STDLIB_DEF} ${MINIZIP_DEF})
+        target_include_directories(minigzip_cmd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
         target_link_libraries(minigzip_cmd ${PROJECT_NAME})
 
         if(NOT SKIP_INSTALL_BINARIES AND NOT SKIP_INSTALL_ALL)
@@ -828,27 +683,35 @@ if(MZ_BUILD_TEST)
         endif()
     endif()
 
-    add_executable(minizip_cmd "minizip.c")
-    mz_configure_target(minizip_cmd)
+    add_executable(minizip_cmd minizip.c)
     set_target_properties(minizip_cmd PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
-    target_compile_definitions(minizip_cmd PRIVATE ${MINIZIP_DEF})
+    target_compile_definitions(minizip_cmd PRIVATE ${STDLIB_DEF} ${MINIZIP_DEF})
+    target_include_directories(minizip_cmd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(minizip_cmd ${PROJECT_NAME})
 
     if(NOT SKIP_INSTALL_BINARIES AND NOT SKIP_INSTALL_ALL)
         install(TARGETS minizip_cmd RUNTIME DESTINATION "bin")
     endif()
 
-    add_executable(test_cmd "test/test.c" "test/test.h")
-    mz_configure_target(test_cmd)
-    target_compile_definitions(test_cmd PRIVATE ${MINIZIP_DEF})
+    add_executable(test_cmd test/test.c test/test.h)
+    target_compile_definitions(test_cmd PRIVATE ${STDLIB_DEF} ${MINIZIP_DEF})
     if(MZ_COMPAT)
         target_compile_definitions(test_cmd PRIVATE -DHAVE_COMPAT)
     endif()
+    target_include_directories(test_cmd PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(test_cmd ${PROJECT_NAME})
 endif()
 
 if(MZ_BUILD_TEST AND MZ_BUILD_UNIT_TEST)
     enable_testing()
+
+    # Can't disable zlib testing so ctest tries to run zlib example app
+    if(MZ_ZLIB AND NOT MZ_LIBCOMP AND NOT ZLIB_FOUND)
+        add_dependencies(${PROJECT_NAME} example)
+        if(HAVE_OFF64_T)
+            add_dependencies(${PROJECT_NAME} example64)
+        endif()
+    endif()
 
     add_test(NAME test_cmd COMMAND test_cmd WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -872,6 +735,10 @@ if(MZ_BUILD_TEST AND MZ_BUILD_UNIT_TEST)
         if(MZ_LZMA)
             list(APPEND COMPRESS_METHOD_NAMES "lzma")
             list(APPEND COMPRESS_METHOD_ARGS "-m")
+        endif()
+        if(MZ_LZMA OR MZ_LIBCOMP)
+            list(APPEND COMPRESS_METHOD_NAMES "xz")
+            list(APPEND COMPRESS_METHOD_ARGS "-n")
         endif()
         if(MZ_ZSTD)
             list(APPEND COMPRESS_METHOD_NAMES "zstd")
@@ -931,7 +798,7 @@ if(MZ_BUILD_TEST AND MZ_BUILD_UNIT_TEST)
 
     # Perform tests on others
     if(NOT MZ_COMPRESS_ONLY)
-        if(MZ_ZLIB)
+        if(MZ_ZLIB OR MZ_LIBCOMP)
             add_test(NAME unzip-tiny
                      COMMAND minizip_cmd -x -o ${EXTRA_ARGS} -d out
                         fuzz/unzip_fuzzer_seed_corpus/tiny.zip
@@ -998,8 +865,9 @@ if(MZ_BUILD_FUZZ_TEST)
         set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
         target_compile_definitions(${target} PRIVATE ${STDLIB_DEF})
         target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
         target_link_libraries(${target} ${PROJECT_NAME})
+
+        add_dependencies(${target} ${PROJECT_NAME})
         if(FUZZING_ENGINE_FOUND)
             target_link_libraries(${target} ${FUZZING_ENGINE})
         endif()
@@ -1017,7 +885,7 @@ endif()
 add_feature_info(MZ_COMPAT MZ_COMPAT "Enables compatibility layer")
 add_feature_info(MZ_ZLIB MZ_ZLIB "Enables ZLIB compression")
 add_feature_info(MZ_BZIP2 MZ_BZIP2 "Enables BZIP2 compression")
-add_feature_info(MZ_LZMA MZ_LZMA "Enables LZMA compression")
+add_feature_info(MZ_LZMA MZ_LZMA "Enables LZMA & XZ compression")
 add_feature_info(MZ_ZSTD MZ_ZSTD "Enables ZSTD compression")
 add_feature_info(MZ_PKCRYPT MZ_PKCRYPT "Enables PKWARE traditional encryption")
 add_feature_info(MZ_WZAES MZ_WZAES "Enables WinZIP AES encryption")
