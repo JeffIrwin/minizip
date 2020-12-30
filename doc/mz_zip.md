@@ -28,6 +28,7 @@ The _mz_zip_ object allows for the reading and writing of the a zip file and its
   - [mz_zip_entry_write_open](#mz_zip_entry_write_open)
   - [mz_zip_entry_write](#mz_zip_entry_write)
   - [mz_zip_entry_write_close](#mz_zip_entry_write_close)
+  - [mz_zip_entry_seek_local_header](#mz_zip_entry_seek_local_header)
   - [mz_zip_entry_close_raw](#mz_zip_entry_close_raw)
   - [mz_zip_entry_close](#mz_zip_entry_close)
 - [Entry Enumeration](#entry-enumeration)
@@ -695,6 +696,32 @@ if (err == MZ_OK)
     printf("Zip file entry closed for writing\n");
 ```
 
+### mz_zip_entry_seek_local_header
+Seeks to the local header for the entry.
+
+**Arguments**
+|Type|Name|Description|
+|-|-|-|
+|void *|handle|_mz_zip_ instance|
+
+**Return**
+|Type|Description|
+|-|-|
+|int32_t|[MZ_ERROR](mz_error.md) code, MZ_OK if successful.|
+
+**Example**
+```
+int32_t err = mz_zip_goto_first_entry(zip_handle);
+if (err == MZ_OK)
+    err = mz_zip_entry_seek_local_header(zip_handle);
+if (err == MZ_OK) {
+    void *stream = NULL;
+    mz_zip_get_stream(zip_handle, &stream);
+    int64_t position = mz_stream_tell(stream);
+    printf("Position of local header of first entry: %lld\n", position);
+}
+```
+
 ### mz_zip_entry_close_raw
 
 Closes the current entry in the zip file. To be used to close an entry that has been opened for reading or writing in raw mode.
@@ -1227,6 +1254,7 @@ Seeks using a _mz_stream_ to an extra field by its type and returns its length.
 |-|-|-|
 |void *|stream|_mz_stream_ instance|
 |uint16_t|type|Extra field type indentifier (See [PKWARE zip app note](zip/appnote.iz.txt) section 4.5.2)|
+|int32_t|max_seek|Maximum length to search for extrafield|
 |uint16_t *|length|Pointer to extra field length|
 
 **Return**
@@ -1246,7 +1274,7 @@ mz_stream_mem_create(&file_extra_stream);
 mz_stream_mem_set_buffer(file_extra_stream, (void *)file_info->extrafield,
     file_info->extrafield_size);
 
-if (mz_zip_extrafield_find(file_extra_stream, MZ_ZIP_EXTENSION_AES, &extrafield_length) == MZ_OK)
+if (mz_zip_extrafield_find(file_extra_stream, MZ_ZIP_EXTENSION_AES, INT32_MAX, &extrafield_length) == MZ_OK)
     printf("Found AES extra field, length %d\n", extrafield_length);
 else
     printf("Unable to find AES extra field in zip entry\n");
