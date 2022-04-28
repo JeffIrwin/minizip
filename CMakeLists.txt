@@ -69,7 +69,7 @@ endif()
 enable_language(C)
 
 # Library version
-set(VERSION "3.0.5")
+set(VERSION "3.0.6")
 
 # API version
 set(SOVERSION "3")
@@ -404,10 +404,12 @@ if(MZ_OPENSSL)
         list(APPEND MINIZIP_SRC mz_crypt_openssl.c)
         list(APPEND MINIZIP_LIB ${OPENSSL_LIBRARIES})
         list(APPEND MINIZIP_LBD ${OPENSSL_LIBRARY_DIRS})
-        list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIR})
 
         if(OPENSSL_INCLUDE_DIRS)
             list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIRS})
+        endif()
+        if(OPENSSL_INCLUDE_DIR)
+            list(APPEND MINIZIP_INC ${OPENSSL_INCLUDE_DIR})
         endif()
     else()
         message(STATUS "OpenSSL library not found")
@@ -661,7 +663,7 @@ endif()
 list(APPEND MINIZIP_INC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Create minizip library
-project(minizip${MZ_PROJECT_SUFFIX} VERSION ${VERSION})
+project(minizip${MZ_PROJECT_SUFFIX} LANGUAGES C VERSION ${VERSION})
 
 if(NOT ${MZ_PROJECT_SUFFIX} STREQUAL "")
     message(STATUS "Project configured as ${PROJECT_NAME}")
@@ -702,14 +704,20 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${MINIZIP_LBD})
 target_compile_definitions(${PROJECT_NAME} PRIVATE ${STDLIB_DEF} ${MINIZIP_DEF})
 target_include_directories(${PROJECT_NAME} PRIVATE ${MINIZIP_INC})
 target_include_directories(${PROJECT_NAME} PUBLIC
-    $<INSTALL_INTERFACE:${INSTALL_INC_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+if(MZ_COMPAT)
+    target_include_directories(${PROJECT_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+endif()
 
 # Create minizip alias
 add_library(MINIZIP::minizip ALIAS ${PROJECT_NAME})
 
 # Install files
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
+    target_include_directories(${PROJECT_NAME} PUBLIC
+        $<INSTALL_INTERFACE:${INSTALL_INC_DIR}>)
+
     install(TARGETS ${PROJECT_NAME} ${MINIZIP_DEP}
             EXPORT ${PROJECT_NAME}
             INCLUDES DESTINATION "${INSTALL_INC_DIR}"
