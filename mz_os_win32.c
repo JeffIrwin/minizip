@@ -8,12 +8,12 @@
    See the accompanying LICENSE file for the full text of the license.
 */
 
-
 #include "mz.h"
 #include "mz_os.h"
 #include "mz_strm_os.h"
 
 #include <windows.h>
+#include <winioctl.h>
 
 /***************************************************************************/
 
@@ -376,7 +376,6 @@ DIR *mz_os_open_dir(const char *path) {
     wchar_t *path_wide = NULL;
     char fixed_path[320];
     void *handle = NULL;
-
 
     if (path == NULL)
         return NULL;
