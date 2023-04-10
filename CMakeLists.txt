@@ -28,7 +28,7 @@ option(MZ_BZIP2 "Enables BZIP2 compression" ON)
 option(MZ_LZMA "Enables LZMA & XZ compression" ON)
 option(MZ_ZSTD "Enables ZSTD compression" ON)
 cmake_dependent_option(MZ_LIBCOMP "Enables Apple compression" ON "APPLE" OFF)
-cmake_dependent_option(MZ_FETCH_LIBS "Enables fetching third-party libraries if not found" ON "WIN32" OFF)
+option(MZ_FETCH_LIBS "Enables fetching third-party libraries if not found" ${WIN32})
 option(MZ_FORCE_FETCH_LIBS "Enables fetching third-party libraries always" OFF)
 # Encryption support options
 option(MZ_PKCRYPT "Enables PKWARE traditional encryption" ON)
@@ -79,7 +79,7 @@ endif()
 enable_language(C)
 
 # Library version
-set(VERSION "3.0.9")
+set(VERSION "3.0.10")
 
 # API version
 set(SOVERSION "3")
@@ -429,7 +429,7 @@ if(MZ_OPENSSL)
     endif()
 endif()
 
-# Windows specific
+# Platform specific
 if(WIN32)
     list(APPEND MINIZIP_DEF -D_CRT_SECURE_NO_DEPRECATE)
     list(APPEND MINIZIP_SRC mz_os_win32.c mz_strm_os_win32.c)
@@ -451,11 +451,11 @@ if(WIN32)
     else()
         list(APPEND MINIZIP_DEF -DMZ_ZIP_NO_CRYPTO)
     endif()
-endif()
 
-# Unix specific
-if(UNIX)
-    list(APPEND STDLIB_DEF -D_POSIX_C_SOURCE=200112L)
+    set(MZ_LIBBSD OFF)
+    set(MZ_ICONV OFF)
+else()
+    list(APPEND STDLIB_DEF -D_POSIX_C_SOURCE=200809L)
     list(APPEND MINIZIP_SRC mz_os_posix.c mz_strm_os_posix.c)
 
     if(MZ_PKCRYPT OR MZ_WZAES OR MZ_SIGNING)
@@ -585,9 +585,6 @@ if(UNIX)
 
         set(MZ_ICONV OFF)
     endif()
-else()
-    set(MZ_LIBBSD OFF)
-    set(MZ_ICONV OFF)
 endif()
 
 # Setup predefined macros
