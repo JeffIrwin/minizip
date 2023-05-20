@@ -8,44 +8,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Ubuntu 18 GCC 4.8
-            os: ubuntu-18.04
+          - name: Ubuntu 20 GCC
+            os: ubuntu-20.04
             compiler: gcc
             cxx-compiler: g++
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
-            version: "4.8"
-            codecov: ubuntu_18_gcc_48
-
-          - name: Ubuntu 18 GCC
-            os: ubuntu-18.04
-            compiler: gcc
-            cxx-compiler: g++
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
-            codecov: ubuntu_18_gcc
-
-          - name: Ubuntu 18 Clang 3.9
-            os: ubuntu-18.04
-            compiler: clang
-            cxx-compiler: clang++
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
-            codecov: ubuntu_18_clang_39
-            version: "3.7"
-            packages: llvm-3.9
-            gcov-exec: llvm-cov-3.9 gcov
 
           # No code coverage on release builds
-          - name: Ubuntu 18 Clang
-            os: ubuntu-18.04
+          - name: Ubuntu 20 Clang
+            os: ubuntu-20.04
             compiler: clang
             cxx-compiler: clang++
             deploy: true
             deploy-name: linux
 
+          - name: Ubuntu 20 Clang 6.0
+            os: ubuntu-20.04
+            compiler: clang-6.0
+            cxx-compiler: clang++-6.0
+            version: "6.0"
+            packages: llvm-6.0 clang-6.0
+
           - name: Ubuntu GCC
             os: ubuntu-latest
             compiler: gcc
             cxx-compiler: g++
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
+            cmake-args: -D MZ_CODE_COVERAGE=ON
             codecov: ubuntu_gcc
 
           - name: Ubuntu GCC OSB
@@ -54,14 +41,12 @@ jobs:
             cxx-compiler: g++
             build-dir: ../build
             build-src-dir: ../minizip-ng
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
-            codecov: ubuntu_gcc_osb
 
           - name: Ubuntu Clang
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON
+            cmake-args: -D MZ_CODE_COVERAGE=ON
             codecov: ubuntu_clang
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -70,7 +55,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_ZLIB=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_ZLIB=OFF
             codecov: ubuntu_clang_no_zlib
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -79,7 +64,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_BZIP=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON  -D MZ_BZIP=OFF
             codecov: ubuntu_clang_no_bzip2
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -88,7 +73,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_LZMA=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_LZMA=OFF
             codecov: ubuntu_clang_no_lzma
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -97,7 +82,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_ZSTD=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_ZSTD=OFF
             codecov: ubuntu_clang_no_zstd
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -106,7 +91,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_PKCRYPT=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_PKCRYPT=OFF
             codecov: ubuntu_clang_no_pkcrypt
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -115,7 +100,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_WZAES=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_WZAES=OFF
             codecov: ubuntu_clang_no_winzip_aes
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -124,7 +109,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_PKCRYPT=OFF -D MZ_WZAES=OFF
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_PKCRYPT=OFF -D MZ_WZAES=OFF
             codecov: ubuntu_clang_no_encryption
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -133,7 +118,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_COMPRESS_ONLY=ON
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_COMPRESS_ONLY=ON
             codecov: ubuntu_clang_compress_only
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -142,7 +127,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_DECOMPRESS_ONLY=ON
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_DECOMPRESS_ONLY=ON
             codecov: ubuntu_clang_decompress_only
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -151,7 +136,7 @@ jobs:
             os: ubuntu-latest
             compiler: clang-14
             cxx-compiler: clang++-14
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_OPENSSL=ON
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_OPENSSL=ON
             codecov: ubuntu_clang_openssl
             packages: clang-14 llvm-14
             gcov-exec: llvm-cov-14 gcov
@@ -161,37 +146,34 @@ jobs:
             os: windows-latest
             compiler: cl
             # Don't use find_package for 3rd party libraries which are installed incorrectly on GitHub CI instances
-            cmake-args: -D MZ_FORCE_FETCH_LIBS=ON -D MZ_SIGNING=ON
+            cmake-args: -D MZ_FORCE_FETCH_LIBS=ON
             deploy: true
             deploy-name: windows
 
-          # No code coverage supported
-          - name: Windows MSVC BCrypt
-            os: windows-latest
-            compiler: cl
-            # Don't use find_package for 3rd party libraries which are installed incorrectly on GitHub CI instances
-            cmake-args: -D MZ_FORCE_FETCH_LIBS=ON -D MZ_SIGNING=OFF -D MZ_BCRYPT=ON
-            deploy: true
-            deploy-name: uwp
+          # # No code coverage supported
+          # - name: Windows MSVC XP
+          #   os: windows-latest
+          #   compiler: cl
+          #   # Don't use find_package for 3rd party libraries which are installed incorrectly on GitHub CI instances
+          #   cmake-args: -D MZ_FORCE_FETCH_LIBS=ON -D CMAKE_C_FLAGS="-D_WIN32_WINNT=0x501" -D CMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x501"
+          #   deploy: true
+          #   deploy-name: windowsxp
 
-          - name: Windows GCC
+          - name: Windows GCC Code Coverage
             os: windows-latest
             compiler: gcc
             cxx-compiler: g++
             # Don't use find_package for 3rd party libraries which are installed incorrectly on GitHub CI instances
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_FORCE_FETCH_LIBS=ON -G Ninja
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_FORCE_FETCH_LIBS=ON -G Ninja
             codecov: windows_gcc
 
           # No code coverage on release builds
-          - name: macOS Xcode 9.4.1
-          # Use older version of macOS to install test certificate without user interaction
-            os: macos-10.15
-            version: "9.4.1"
-            cmake-args: -D MZ_BUILD_UNIT_TESTS=OFF -D MZ_SIGNING=ON
+          - name: macOS Xcode
+            os: macos-latest
             deploy: true
             deploy-name: macos
 
-          - name: macOS Xcode
+          - name: macOS Xcode Code Coverage
             os: macOS-latest
             cmake-args: -D MZ_CODE_COVERAGE=ON
             codecov: macos_xcode
@@ -202,9 +184,8 @@ jobs:
             codecov: macos_xcode_libcompression
 
           - name: macOS Xcode OpenSSL
-            # Use older version of macOS to install test certificate without user interaction
-            os: macos-10.15
-            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_SIGNING=ON -D MZ_OPENSSL=ON -D OPENSSL_ROOT_DIR=/usr/local/opt/openssl -D OPENSSL_INCLUDE_DIRS=/usr/local/opt/openssl/include -D OPENSSL_CRYPTO_LIBRARY=/usr/local/opt/openssl/lib/libcrypto.dylib -D OPENSSL_SSL_LIBRARY=/usr/local/opt/openssl/lib/libssl.dylib
+            os: macos-latest
+            cmake-args: -D MZ_CODE_COVERAGE=ON -D MZ_OPENSSL=ON -D OPENSSL_ROOT_DIR=/usr/local/opt/openssl -D OPENSSL_INCLUDE_DIRS=/usr/local/opt/openssl/include -D OPENSSL_CRYPTO_LIBRARY=/usr/local/opt/openssl/lib/libcrypto.dylib -D OPENSSL_SSL_LIBRARY=/usr/local/opt/openssl/lib/libssl.dylib
             codecov: macos_xcode_openssl
 
     steps:
@@ -244,22 +225,9 @@ jobs:
     - name: Compile source code
       run: cmake --build ${{ matrix.build-dir || '.' }} --config ${{ matrix.build-config || 'Release' }}
 
-    - name: Install test certificate (macOS)
-      if: runner.os == 'macOS' && contains(matrix.cmake-args, 'MZ_SIGNING=ON')
-      run: |
-        sudo security authorizationdb write com.apple.trust-settings.admin allow
-        sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain test/test.pem || true
-
-    - name: Install test certificate (Windows)
-      if: runner.os == 'Windows' && contains(matrix.cmake-args, 'MZ_SIGNING=ON')
-      run: certutil -addstore -enterprise Root test/test.pem
-
     - name: Run test cases
       run: ctest --output-on-failure -C ${{ matrix.build-config || 'Release' }}
       working-directory: ${{ matrix.build-dir }}
-      # Specify test certificate for OpenSSL tests
-      env:
-        SSL_CERT_FILE: test.pem
 
     - name: Generate coverage report
       shell: bash
