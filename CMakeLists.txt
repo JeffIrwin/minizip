@@ -8,7 +8,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 # Library version
-set(VERSION "4.0.5")
+set(VERSION "4.0.6")
 # API version
 set(SOVERSION "4")
 
@@ -197,7 +197,7 @@ if(MZ_ZLIB)
         set(PC_PRIVATE_DEPS "zlib")
         set(ZLIB_COMPAT ON)
     elseif(MZ_FETCH_LIBS)
-        clone_repo(zlib https://github.com/madler/zlib master)
+        clone_repo(zlib https://github.com/zlib-ng/zlib-ng stable)
 
         # Don't automatically add all targets to the solution
         add_subdirectory(${ZLIB_SOURCE_DIR} ${ZLIB_BINARY_DIR} EXCLUDE_FROM_ALL)
@@ -315,7 +315,7 @@ if(MZ_LZMA)
     elseif(MZ_FETCH_LIBS)
         set(BUILD_TESTING OFF CACHE BOOL "Build lzma tests" FORCE)
 
-        clone_repo(liblzma https://git.tukaani.org/xz.git master)
+        clone_repo(liblzma https://github.com/tukaani-project/xz master)
 
         # Don't automatically add all targets to the solution
         add_subdirectory(${LIBLZMA_SOURCE_DIR} ${LIBLZMA_BINARY_DIR} EXCLUDE_FROM_ALL)
